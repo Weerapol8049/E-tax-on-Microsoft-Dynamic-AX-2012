@@ -1,0 +1,6 @@
+public boolean parmHideDocuType(boolean _hideDocuType = false)
+{
+    hideDocuType = _hideDocuType;
+
+    return hideDocuType;
+}
