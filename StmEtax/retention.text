@@ -1,0 +1,19 @@
+public Amount retention(ProjProposalId ProposalId)
+{
+    ProjProposalOnAcc           projProposalOnAcc;
+    ProjProposalOnAccDetail     projProposalOnAccDetail;
+    Amount                      lineAmount, sumAmount;
+
+    while select  projProposalOnAcc
+            where projProposalOnAcc.ProposalId == ProposalId
+        join projProposalOnAccDetail
+            where projProposalOnAccDetail.ProposalRefRecId == projProposalOnAcc.RecId
+    {
+        lineAmount = projProposalOnAccDetail.lineAmount();
+        if (lineAmount < 0) //OB
+            sumAmount += lineAmount;
+    }
+
+    return sumAmount;
+
+}
