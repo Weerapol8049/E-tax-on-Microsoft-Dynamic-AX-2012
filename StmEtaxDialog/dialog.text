@@ -1,0 +1,70 @@
+protected Object dialog()
+{
+    Dialog              dialog;
+    FormStringControl   control;
+    StmEtaxReferenceLetter  etaxReferenceLetter;
+    boolean             let = false;
+
+    dialog = super();
+    dialog.formBuildDesign().width(450);
+    dialog.dialogForm().form().design().left(48, 4);
+    dialog.dialogForm().form().design().top(240, 3);
+
+    dialog.caption("E-tax document type");
+
+    field = dialog.addField(extendedTypeStr(Name));
+    field.label("Document type");
+    field.fieldControl().mandatory(true);
+
+    if (documentType)
+    {
+        field.value(documentType);
+        field.enabled(false);
+        let = true;
+    }
+
+    control = field.control();
+    control.registerOverrideMethod(methodStr(FormStringControl, lookup)
+                                    , methodStr(StmEtaxDialog, lookupDocumentType),this);
+    control.registerOverrideMethod(methodstr(FormStringControl, modified),
+                                    methodstr(StmEtaxDialog,  modifiedDocumentType), this);
+
+
+    fieldPurposeCode = dialog.addField(extendedTypeStr(String15));
+    fieldPurposeCode.label("Purpose code");
+    fieldPurposeCode.visible(let);
+    control = fieldPurposeCode.control();
+    control.registerOverrideMethod(methodStr(FormStringControl, lookup)
+                                   , methodStr(StmEtaxDialog, lookupPurpose),this);
+    control.registerOverrideMethod(methodstr(FormStringControl, modified)
+                                    , methodstr(StmEtaxDialog,  modifiedPurposeCode), this);
+
+    fieldDesc = dialog.addField(extendedTypeStr(NameAlias));
+    fieldDesc.label("Description");
+    fieldDesc.visible(let);
+    fieldDesc.enabled(false);
+
+    fieldPurpose = dialog.addField(extendedTypeStr(Notes));
+    fieldPurpose.label("Purpose");
+    fieldPurpose.visible(false);
+
+    fieldDetailSummary = dialog.addField(enumStr(StmEtaxDetailSummary));
+    fieldDetailSummary.label("Type");
+    fieldDetailSummary.visible(false);
+
+
+    if (documentType == "380")
+    {
+        fieldDesc.visible(false);
+        fieldPurposeCode.visible(false);
+        fieldPurpose.visible(false);
+        fieldDetailSummary.visible(true);
+    }
+    //else
+    //{
+        //fieldPurposeCode.visible(false);
+        //fieldPurpose.visible(false);
+    //}
+
+    return dialog;
+}
