@@ -1,7 +1,0 @@
-str URL()
-{
-    //LIVE
-    return "https://service-etax.one.th/service/etaxsigndocumentjson";
-    //UAT
-    //return "https://uatservice-etax.one.th/service/etaxsigndocumentjson";
-}
