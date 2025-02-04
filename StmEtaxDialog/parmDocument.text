@@ -1,0 +1,8 @@
+[DataMemberAttribute("Document")]
+public Name parmDocument()
+{
+    Name    docType;
+    docType = field.value();
+
+    return docType;
+}
