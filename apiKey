@@ -1,0 +1,4 @@
+str apiKey()
+{
+    return this.authorizationCode();
+}
