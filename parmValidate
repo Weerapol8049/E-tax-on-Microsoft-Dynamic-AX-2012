@@ -1,0 +1,6 @@
+public boolean parmValidate(boolean _isSend = false)
+{
+    isSend = _isSend;
+
+    return isSend;
+}
