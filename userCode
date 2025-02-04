@@ -1,7 +1,0 @@
-str userCode()
-{
-    //LIVE
-    return "voraphong";
-    //UAT
-    //return "starmarktest";
-}
