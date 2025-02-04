@@ -1,0 +1,31 @@
+int detailSummaryDialog()
+{
+    Dialog                  dialog;
+    FormRadioControl        radioControl;
+    FormBuildRadioControl   buildRadioControl;
+    FormBuildGroupControl   buildGroupControl;
+    int                     buildRadioControlId;
+    int                     selection;
+
+    dialog = new Dialog();
+    buildGroupControl   = dialog.mainFormGroup();
+    buildRadioControl   = buildGroupControl.addControl(FormControlType::RadioButton, 'radiobuttons');
+    buildRadioControlId = buildRadioControl.id();
+
+    buildRadioControl.items(2);
+    buildRadioControl.item(1);
+    buildRadioControl.text("Details");
+    buildRadioControl.item(2);
+    buildRadioControl.text("Summary");
+
+    if (dialog.run())
+    {
+        if (buildRadioControl)
+        {
+            radioControl = dialog.formRun().control(buildRadioControlId);
+            selection = radioControl.selection() + 1;
+        }
+    }
+
+    return selection;
+}
