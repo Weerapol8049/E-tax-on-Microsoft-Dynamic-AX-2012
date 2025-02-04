@@ -1,0 +1,17 @@
+str 10 dateFormatMMDDYYYY(TransDate transDate)
+{
+    str 10    datestr;
+    str 4     day, month, y;
+
+    if (transDate)
+    {
+        day   = strRFix(strFmt("%1", dayOfMth(transDate)), 2, '0');
+        month = strRFix(strFmt("%1", mthOfYr(transDate)), 2, '0');
+        y = strFmt("%1", year(transDate));
+
+        datestr = strFmt("%1/%2/%3", month, day, y);
+    }
+
+
+    return datestr;
+}
