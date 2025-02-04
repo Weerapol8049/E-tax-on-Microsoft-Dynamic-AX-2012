@@ -1,0 +1,427 @@
+private void manageDataTable()
+{
+    StmEtaxDialog                       etaxDialog = new StmEtaxDialog();
+    StmEtaxPurposeDialog                etaxPurposeDialog = new StmEtaxPurposeDialog();
+    ProjInvoiceJour                     _projInvoiceJour;
+    ProjInvoiceOnAcc                    _projInvoiceOnAcc;
+    CustInvoiceJour                     _custInvoiceJour;
+    CustInvoiceTrans                    _custInvoiceTrans;
+    StmEtaxTable                        _etaxTable;
+    taxTrans                            _taxTrans;
+    DimensionAttributeValueCombination  dimensionAttributeValueCombination;
+    TaxTransExtensionTH                 taxTransExtensionTH;
+    CustSettlement                      custSettlePaym;
+    CustTrans                           custTransInv;
+
+    CustTrans                           custTransPaym;
+    LedgerJournalTrans                  ledgerJournalTransTmp, ledgerJournalTransInv, ledgerJournalTransPaym;
+    boolean                 let = false;
+
+    switch (common.TableId)
+    {
+        //Invoice journal
+        case tableNum(CustInvoiceJour):
+            custInvoiceJour = common;
+            invoiceId       = custInvoiceJour.InvoiceId;
+            accountNum      = custInvoiceJour.InvoiceAccount;
+
+            invoiceId = subStr(invoiceId, 1, 2);
+
+            if (invoiceId == "IV")
+            {
+                etaxDialog.parmHideType(true);
+
+                if (etaxDialog.prompt())
+                {
+                    documentType = etaxDialog.parmDocument();
+                    detailSummary = etaxDialog.parmType();
+
+                    purposeCode = etaxDialog.parmPurposeCode();
+                    purpose     = etaxDialog.parmPurpose();
+                }
+                if ((documentType == "80") && purposeCode == "")
+                    documentType = "";
+
+            }
+            else if (invoiceId == "SR")
+            {
+                if (custInvoiceJour.InvoiceAmount == 0)
+                {
+                    documentType = "T04";
+                }
+                else
+                {
+                    if (this.custInvoiceTransIV("V7", "DUE"))
+                    {
+                        documentType = "81";
+
+                        if (etaxPurposeDialog.prompt())
+                        {
+                            purposeCode = etaxPurposeDialog.parmPurposeCode();
+                            purpose     = etaxPurposeDialog.parmPurpose();
+                        }
+                        if (documentType == "81" && purposeCode == "")
+                            documentType = "";
+                    }
+                    else if (this.custInvoiceTransIV("V7", "UNDUE"))
+                    {
+                        documentType = "381";
+
+                        if (etaxPurposeDialog.prompt())
+                        {
+                            purposeCode = etaxPurposeDialog.parmPurposeCode();
+                            purpose     = etaxPurposeDialog.parmPurpose();
+                        }
+                        if (documentType == "381" && purposeCode == "")
+                            documentType = "";
+                    }
+                }
+            }
+            else if (invoiceId == "AI" || invoiceId == "SN")
+            {
+                if (this.custInvoiceTransIV("V7", "UNDUE"))
+                    documentType = "380";
+            }
+
+            if (documentType)
+                this.insertCustInvoiceJour();
+
+            break;
+
+        //****************************************************************************************
+        //Post Free text invoice List page
+        //Post Free text invoice Edit
+        case tableNum(CustInvoiceTable):
+            custInvoiceTable    = common;
+            invoiceId           = custInvoiceTable.InvoiceId;
+            accountNum          = custInvoiceTable.InvoiceAccount;
+
+            select _custInvoiceJour
+                where _custInvoiceJour.InvoiceId == custInvoiceTable.InvoiceId
+                    && _custInvoiceJour.InvoiceDate == custInvoiceTable.InvoiceDate
+                    && _custInvoiceJour.numberSequenceGroup == custInvoiceTable.numberSequenceGroup
+                    ;
+
+            custInvoiceJour = _custInvoiceJour;
+
+            invoiceId = subStr(invoiceId, 1, 2);
+
+            if (invoiceId == "IV")//IV V7 DUE
+            {
+                etaxDialog.parmHideType(true);
+
+                if (etaxDialog.prompt())
+                {
+                    documentType    = etaxDialog.parmDocument();
+                    detailSummary   = etaxDialog.parmType();
+
+                    purposeCode     = etaxDialog.parmPurposeCode();
+                    purpose         = etaxDialog.parmPurpose();
+                }
+                if (documentType == "80" && purposeCode == "")
+                    documentType = "";
+
+            }
+            else if (invoiceId == "SR")
+            {
+                if (custInvoiceJour.InvoiceAmount == 0)
+                {
+                    documentType = "T04";
+                }
+                else
+                {
+                    etaxDialog.parmHideDocuType(true);
+
+                    if (this.custInvoiceTransIV("V7", "DUE"))
+                    {
+                        documentType = "81";
+                        etaxDialog.parmDocumentType(documentType);
+
+                        if (etaxDialog.prompt())
+                        {
+                            purposeCode     = etaxDialog.parmPurposeCode();
+                            purpose         = etaxDialog.parmPurpose();
+                        }
+                        if (documentType == "81" && purposeCode == "")
+                            documentType = "";
+                    }
+                    else if (this.custInvoiceTransIV("V7", "UNDUE"))
+                    {
+                        documentType = "381";
+                        etaxDialog.parmDocumentType(documentType);
+
+                        if (etaxDialog.prompt())
+                        {
+                            purposeCode     = etaxDialog.parmPurposeCode();
+                            purpose         = etaxDialog.parmPurpose();
+                        }
+                        if (documentType == "381" && purposeCode == "")
+                            documentType = "";
+                    }
+                }
+            }
+            else if (invoiceId == "AI" || invoiceId == "SN")
+            {
+                if (this.custInvoiceTransIV("V7", "UNDUE"))
+                    documentType = "380";//"T02";
+            }
+
+            if (documentType)
+                this.insertCustInvoiceJour();
+
+            break;
+        //****************************************************************************************
+        //Project invoice
+        case tableNum(ProjInvoiceJour):
+            projInvoiceJour = common;
+            invoiceId       = projInvoiceJour.ProjInvoiceId;
+            accountNum      = projInvoiceJour.InvoiceAccount;
+
+             select firstOnly _projInvoiceOnAcc
+                        where _projInvoiceOnAcc.InvoiceDate     == projInvoiceJour.InvoiceDate
+                           && _projInvoiceOnAcc.ProjInvoiceId   == projInvoiceJour.ProjInvoiceId
+                            ;
+
+            invoiceId = subStr(invoiceId, 1, 2);
+
+            if (invoiceId == "IV")
+            {
+                //etaxDialog.parmHideType(true);
+
+                if (etaxDialog.prompt())
+                {
+                    documentType    = etaxDialog.parmDocument();
+                    detailSummary   = etaxDialog.parmType();
+
+                    purposeCode     = etaxDialog.parmPurposeCode();
+                    purpose         = etaxDialog.parmPurpose();
+                }
+                if (documentType == "80" && purposeCode == "")
+                    documentType = "";
+            }
+            else if (invoiceId == "SR")
+            {
+                if (projInvoiceJour.InvoiceAmount == 0)
+                    documentType = "T04";
+                else
+                {
+                    etaxDialog.parmHideDocuType(true);
+
+                    if (_projInvoiceOnAcc.TaxGroupId == "V7" && _projInvoiceOnAcc.TaxItemGroupId == "DUE")
+                    //if (this.custInvoiceTransIV("V7", "DUE"))
+                    {
+                        documentType = "81";
+                        etaxDialog.parmDocumentType(documentType);
+
+                        if (etaxDialog.prompt())
+                        {
+                            purposeCode     = etaxDialog.parmPurposeCode();
+                            purpose         = etaxDialog.parmPurpose();
+                        }
+                        if (documentType == "81" && purposeCode == "")
+                            documentType = "";
+                    }
+                    else if (_projInvoiceOnAcc.TaxGroupId == "V7" && _projInvoiceOnAcc.TaxItemGroupId == "UNDUE")
+                    //else if (this.custInvoiceTransIV("V7", "UNDUE"))
+                    {
+                        documentType = "381";
+                        etaxDialog.parmDocumentType(documentType);
+
+                        if (etaxDialog.prompt())
+                        {
+                            purposeCode     = etaxDialog.parmPurposeCode();
+                            purpose         = etaxDialog.parmPurpose();
+                        }
+                        if (documentType == "381" && purposeCode == "")
+                            documentType = "";
+                    }
+                }
+            }
+            else if (invoiceId == "AI" || invoiceId == "SN")
+            {
+                if (_projInvoiceOnAcc.TaxGroupId == "V7" && _projInvoiceOnAcc.TaxItemGroupId == "UNDUE")
+                {
+                    documentType = "380";//"T02";
+                    etaxDialog.parmHideType(true);
+                    etaxDialog.parmDocumentType(documentType);
+
+                    if (etaxDialog.prompt())
+                    {
+                        documentType    = etaxDialog.parmDocument();
+                        detailSummary   = etaxDialog.parmType();
+                    }
+                }
+            }
+
+            if (documentType == "T04" || documentType == "380")
+            {
+                if (detailSummary == "0")
+                    this.insertProjProposalInvoiceDetails();
+                else if (detailSummary == "1")
+                    this.insertProjProposalInvoiceSummary();
+            }
+            else if (documentType)
+            {
+                this.insertProjInvoice();
+            }
+
+            break;
+        //****************************************************************************************
+        //Project invoice proposal List page
+        //Project invoice proposal Edit
+        case tableNum(ProjProposalJour):
+            projProposalJour = common;
+
+            select _projInvoiceJour
+                where _projInvoiceJour.InvoiceDate      == projProposalJour.InvoiceDate
+                   && _projInvoiceJour.ProjInvoiceId    == projProposalJour.ProjInvoiceId
+                   ;
+
+            select firstOnly _projInvoiceOnAcc
+                where _projInvoiceOnAcc.InvoiceDate     == _projInvoiceJour.InvoiceDate
+                    && _projInvoiceOnAcc.ProjInvoiceId   == _projInvoiceJour.ProjInvoiceId
+                    ;
+
+            projInvoiceJour = _projInvoiceJour;
+            invoiceId       = _projInvoiceJour.ProjInvoiceId;
+            accountNum      = _projInvoiceJour.InvoiceAccount;
+
+            invoiceId = subStr(invoiceId, 1, 2);
+
+            if (invoiceId == "IV")
+            {
+                if (etaxDialog.prompt())
+                {
+                    documentType    = etaxDialog.parmDocument();
+                    detailSummary   = etaxDialog.parmType();
+
+                    purposeCode     = etaxDialog.parmPurposeCode();
+                    purpose         = etaxDialog.parmPurpose();
+                }
+                if (documentType == "80" && purposeCode == "")
+                    documentType = "";
+            }
+            else if (invoiceId == "SR")
+            {
+                if (projInvoiceJour.InvoiceAmount == 0)
+                    documentType = "T04";
+                else
+                {
+                    etaxDialog.parmHideDocuType(true);
+
+                    select firstOnly _projInvoiceOnAcc
+                        where _projInvoiceOnAcc.InvoiceDate     == projInvoiceJour.InvoiceDate
+                           && _projInvoiceOnAcc.ProjInvoiceId   == projInvoiceJour.ProjInvoiceId
+                            ;
+
+                    if (_projInvoiceOnAcc.TaxGroupId == "V7" && _projInvoiceOnAcc.TaxItemGroupId == "DUE")
+                    {
+                        documentType = "81";
+                        etaxDialog.parmDocumentType(documentType);
+
+                        if (etaxDialog.prompt())
+                        {
+                            purposeCode     = etaxDialog.parmPurposeCode();
+                            purpose         = etaxDialog.parmPurpose();
+                        }
+                        if (documentType == "81" && purposeCode == "")
+                            documentType = "";
+                    }
+                    else if (_projInvoiceOnAcc.TaxGroupId == "V7" && _projInvoiceOnAcc.TaxItemGroupId == "UNDUE")
+                    {
+                        documentType = "381";
+                        etaxDialog.parmDocumentType(documentType);
+
+                        if (etaxDialog.prompt())
+                        {
+                            purposeCode     = etaxDialog.parmPurposeCode();
+                            purpose         = etaxDialog.parmPurpose();
+                        }
+                        if (documentType == "381" && purposeCode == "")
+                            documentType = "";
+                    }
+                }
+            }
+            else if (invoiceId == "AI" || invoiceId == "SN")
+            {
+                if (_projInvoiceOnAcc.TaxGroupId == "V7" && _projInvoiceOnAcc.TaxItemGroupId == "UNDUE")
+                {
+                    documentType = "380";//"T02";
+                    etaxDialog.parmHideType(true);
+                    etaxDialog.parmDocumentType(documentType);
+
+                    if (etaxDialog.prompt())
+                    {
+                        documentType    = etaxDialog.parmDocument();
+                        detailSummary   = etaxDialog.parmType();
+                    }
+                }
+            }
+
+
+            if (documentType == "T04" || documentType == "380")
+            {
+                if (detailSummary == "0")
+                    this.insertProjProposalInvoiceDetails();
+                else if (detailSummary == "1")
+                    this.insertProjProposalInvoiceSummary();
+            }
+            else if (documentType)
+            {
+                this.insertProjInvoice();
+            }
+
+            break;
+        //****************************************************************************************
+        //Posted sales tax เกิดจาก payment
+        case tableNum(TaxTrans):
+            taxTrans    = common;
+            invoiceId   = taxTrans.taxTransExtensionTH().TaxInvoiceId;
+
+            if (subStr(invoiceId, 1, 2) == "RI")
+            {
+                documentType = "T03";
+                this.insertPostedSalesTax();
+            }
+
+            break;
+
+        //****************************************************************************************
+        //Payments
+        case tableNum(LedgerJournalTrans):
+            ledgerJournalTrans = common;
+            documentType = "T03";
+
+            custTransPaym           = CustTrans::findVoucherDate(ledgerJournalTrans.Voucher, ledgerJournalTrans.TransDate);
+
+             while select custSettlePaym
+                    where custSettlePaym.TransRecId     == custTransPaym.RecId
+                join custTransInv
+                    where custSettlePaym.OffsetRecid    == custTransInv.RecId
+                outer join _custInvoiceJour
+                    where custTransInv.Invoice          == _custInvoiceJour.InvoiceId
+                        && custTransInv.TransDate       == _custInvoiceJour.InvoiceDate
+                        && custTransInv.AccountNum      == _custInvoiceJour.InvoiceAccount
+                outer join ledgerJournalTransInv
+                    where custTransInv.Voucher          == ledgerJournalTransInv.Voucher
+                        && custTransInv.TransDate       == ledgerJournalTransInv.TransDate
+            {
+                select firstOnly taxTransExtensionTH
+                    where taxTransExtensionTH.TaxInvoiceId == custTransPaym.DocumentNum
+                    join _taxTrans order by _taxTrans.RecId desc
+                    where _taxTrans.RecId == taxTransExtensionTH.TaxTrans
+                        && _taxTrans.TransDate == custTransPaym.TransDate
+                        && _taxTrans.TaxOrigin == TaxOrigin::Payment
+                ;
+
+                taxTrans    = _taxTrans;
+                invoiceId   = taxTransExtensionTH.TaxInvoiceId;
+                accountNum  = _custInvoiceJour.InvoiceAccount;
+            }
+
+            this.insertPostedSalesTax(true);
+
+            break;
+
+    }
+}
