@@ -1,0 +1,6 @@
+public Name parmDocumentType(Name _documentType = documentType)
+{
+    documentType = _documentType;
+
+    return documentType;
+}
