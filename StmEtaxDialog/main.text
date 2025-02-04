@@ -1,0 +1,9 @@
+static void main(Args _args)
+{
+    StmEtaxDialog dialogLookup = new StmEtaxDialog();
+
+    if (dialogLookup.prompt())
+    {
+        dialogLookup.run();
+    }
+}
