@@ -1,0 +1,36 @@
+LogisticsElectronicAddressLocator emailAddress(AccountNum _accountNum)
+{
+    CustTable                           cust;
+    DirPartyLocation                    dirPartyLocation;
+    LogisticsElectronicAddress          elecAddress;
+    LogisticsElectronicAddressRole      elecAddressRole;
+    LogisticsLocationRole               locRole;
+    LogisticsElectronicAddressLocator   locator;
+
+    select firstOnly cust where cust.AccountNum == _accountNum;
+
+    while select DirPartyLocation
+        where dirPartyLocation.party == cust.Party
+    {
+        while select elecAddress
+            where elecAddress.Location == dirPartyLocation.Location
+               && elecAddress.Type == LogisticsElectronicAddressMethodType::Email
+        {
+            while select elecAddressRole
+                    where elecAddressRole.ElectronicAddress == elecAddress.RecId
+                    join locRole
+                    where locRole.RecId == elecAddressRole.LocationRole
+            {
+                locator = elecAddress.Locator;
+            }
+        }
+    }
+
+    if (locator == "")
+    {
+        locator = this.email();
+        warning(strFmt("Customer '%1' ไม่ได้ระบุ email ระบบจะทำการส่งไปยัง '%2'", cust.AccountNum, locator));
+    }
+
+    return locator;
+}
