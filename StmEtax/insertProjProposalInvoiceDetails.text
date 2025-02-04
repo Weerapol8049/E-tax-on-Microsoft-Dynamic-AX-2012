@@ -1,0 +1,245 @@
+private void insertProjProposalInvoiceDetails()
+{
+    PSAProjProposalProj         psaProjProposalProj;
+    ProjInvoiceOnAcc            projInvoiceOnAcc;
+    ProjProposalOnAccDetail     projProposalOnAccDetail;
+    ProjOnAccTrans              projOnAccTrans, projOnAccTransAmount, projOnAccTransQty;
+    ProjProposalJour            projProposalJourTmp;
+    ProjProposalOnAcc           projProposalOnAccGroup, projProposalOnAcc, projProposalOnAccQty;
+    TaxTrans                    taxTransTmp;
+    ProjTable                   projTable, projTableTmp;
+    TaxGroupData                taxGroupData;
+    CustTable                   custTable;
+    LogisticsPostalAddress      postalAddress;
+
+    ProjOrigin                  projOrigin;
+
+    str 20                      currentDateTime;
+    int                         i;
+    real                        amount, totalAmount, retension;
+    int                         qty;
+    Name                        name;
+    boolean                     isCal = false;
+    Amount                      lineAmount, deposit;
+
+    currentDateTime = this.formatDateTimeStr(DateTimeUtil::utcNow());
+
+    postalAddress   = LogisticsPostalAddress::findRecId(projInvoiceJour.DeliveryPostalAddress);//wk#1.n 20210721
+
+    select sum(InvoicedNow) from psaProjProposalProj
+           where psaProjProposalProj.ProjProposalId == projInvoiceJour.ProposalId && psaProjProposalProj.IsPreBill == NoYes::No;
+
+    select projProposalJour
+        where projProposalJour.InvoiceDate == projInvoiceJour.InvoiceDate
+            && projProposalJour.ProjInvoiceId == projInvoiceJour.ProjInvoiceId;
+
+    projTableTmp = ProjTable::find(projInvoiceJour.projId());
+
+    documentHeader.clear();
+    documentHeader.DataTypeId                   = "H";
+    documentHeader.DocumentTypeCode             = documentType;//ประเภทเอกสาร
+    documentHeader.PdfTemplateId                = StmEtaxReferenceLetter::find(documentType).Template;// H25
+    documentHeader.DocumentName                 = StmEtaxReferenceLetter::find(documentType).Description;//ชื่อเอกสาร
+    documentHeader.DocumentId                   = projInvoiceJour.ProjInvoiceId;// H03 - [T04, 380]  เลขที่เอกสาร
+    documentHeader.DocumentIssueDtm             = this.formatDateTimeStr(str2datetime(strFmt("%1 00:00:00",projInvoiceJour.InvoiceDate), 123));// H04 - [T04, 380]  เอกสารลงวันที่
+    documentHeader.CreatePurposeCode            = purposeCode;//สาเหตุการออกเอกสาร
+    documentHeader.CreatePurpose                = purpose == "" ? StmEtaxPurposeCode::find(purposeCode).Description : purpose;//สาเหตุการออกเอกสาร
+
+    //กรณียกเลิก หรือ ออกไบแทน
+    //documentHeader.AdditionalRefAssignId        = projProposalJour.STMCustRef;//เลขที่เอกสารอ้างอิง
+    //documentHeader.AdditionalRefIssueDtm        = this.formatDateTimeStr(str2datetime(strFmt("%1 00:00:00",projProposalJour.InvoiceDate + PaymTerm::find(projProposalJour.Payment).NumOfDays), 123));//เอกสารอ้างอิงลงวันที่
+    //documentHeader.AdditionalRefTypeCode        = documentType;//ประเภทเอกสารอ้างอิง
+    //documentHeader.AdditionalRefDocumentName    = "";//ชื่อเอกสารอ้างอิง
+
+    documentHeader.DeliveryTypeCode             = "";//เงื่อนไขการส่งของ
+    documentHeader.BuyerOrderAssignId           = projProposalJour.STMCustRef;// H12 - [T04, 380] เลขที่ใบสั่งซื้อ
+    documentHeader.BuyerOrderIssueDtm           = this.formatDateTimeStr(str2datetime(strFmt("%1 00:00:00",projProposalJour.InvoiceDate + PaymTerm::find(projProposalJour.Payment).NumOfDays), 123));//วันเดือนปี ที่ออกใบสั่งซื้อ
+    documentHeader.BuyerOrderRefTypeCode        = "";//ประเภทเอกสารอ้างอิงการสั่งซื้อ
+    documentHeader.DocumentRemark               = projTableTmp.ParentId == "" ? strReplace(projTableTmp.Name, "\n", " ") : strReplace(ProjTable::find(projTableTmp.ParentId).Name + " " + projProposalJour.STMRemark, "\n", " ");//H15 - [T04] หมายเหตุ
+    documentHeader.VoucherNo                    = "";//เลขใบสำคัญจ่าย
+    documentHeader.SendEmail                    = NoYes::Yes;//Indicator ส่งเมลให้ลูกค้า
+    documentHeader.insert();
+
+    refHeader = documentHeader.RecId;
+
+    custTable       = CustTable::find(projProposalJour.InvoiceAccount);
+
+    information.clear();
+    information.DataTypeId                      = "B";
+    information.RefRecId                        = refHeader;
+    information.Id                              = projProposalJour.InvoiceAccount;//รหัสผู้ซื้อ
+    information.Name                            = custTable.name();//ชื่อผู้ซื้อ
+    information.TaxIdType                       = custTable.TaxNumTHJIS == "" ? "OTHR" : "TXID";// B03 - [T04, 380] ประเภทผู้เสียภาษีอากร
+    information.TaxId                           = custTable.TaxNumTHJIS == "" ?  "N/A" : custTable.TaxNumTHJIS;// B04 - [T04, 380]  เลขประจำตัวผู้เสียภาษีอากร
+    information.BranchId                        = custTable.TaxBranchTHJIS == "" ? "00000" : custTable.TaxBranchTHJIS;// B05 - [T04, 380]  เลขที่สาขา
+    information.PostCode                        = strLTrim(postalAddress.ZipCode);// B10 - [T04, 380]  รหัสไปรษณีย์
+    information.AddressLine1                    = this.address(postalAddress);// B13 - [T04, 380]  ที่อยู่บรรทัดที่ 1
+    information.CountryId                       = postalAddress.CountryRegionId == "THA" ? "TH" : postalAddress.CountryRegionId;//รหัสประเทศ
+    information.URID                            = this.emailAddress(custTable.AccountNum);//อีเมล
+    information.insert();
+
+    refHeader = documentHeader.RecId;
+
+    while select projProposalJourTmp
+                group by ProjInvoiceProjId, InvoiceDate, DueDate, ProposalId
+            where projProposalJourTmp.ProposalId == projInvoiceJour.ProposalId
+            join projProposalOnAccGroup
+            where projProposalOnAccGroup.ProposalId == projProposalJourTmp.ProposalId
+            join projOnAccTrans
+                group by STMTypeboq, STMTypeRoom, CurrencyId, TaxGroupId, TransactionOrigin, TotalSalesAmountCur
+            where projOnAccTrans.TransId == projProposalOnAccGroup.TransId
+               && projOnAccTrans.TotalSalesAmountCur > 0
+    {
+        qty = 0;
+        amount = 0;
+
+        name        = projProposalJour.PSAInvoiceTxtPre + " " + projOnAccTrans.STMTypeRoom + " Type "+ projOnAccTrans.STMTypeboq;
+        projOrigin  = projOnAccTrans.TransactionOrigin == ProjOrigin::Prepayment ? ProjOrigin::Prepayment : ProjOrigin::Milestone;
+
+        select projInvoiceOnAcc
+        where projInvoiceOnAcc.InvoiceDate     == projInvoiceJour.InvoiceDate
+           && projInvoiceOnAcc.ProjInvoiceId   == projInvoiceJour.ProjInvoiceId;
+
+        if (projOrigin == ProjOrigin::Prepayment)
+            retension = 0;
+        else if (!isCal)
+        {
+            retension = this.amount(projInvoiceJour.ProposalId, true);
+            isCal = true;
+        }
+
+        while select projProposalOnAcc
+                    where projProposalOnAcc.ProposalId == projProposalJourTmp.ProposalId
+                join  projOnAccTransAmount
+                    where projOnAccTransAmount.TransId              == projProposalOnAcc.TransId
+                        && projOnAccTransAmount.STMTypeboq          == projOnAccTrans.STMTypeboq
+                        && projOnAccTransAmount.STMTypeRoom         == projOnAccTrans.STMTypeRoom
+                        && projOnAccTransAmount.TotalSalesAmountCur == projOnAccTrans.TotalSalesAmountCur
+                        && projOnAccTransAmount.TransactionOrigin   == projOrigin
+                        && projOnAccTransAmount.TotalSalesAmountCur > 0 //ราคาบวกที่ไม่ใช่ค่า OB
+        {
+                amount += round(projOnAccTransAmount.TotalSalesAmountCur,0.01);
+        }
+
+        while select projProposalOnAccQty
+                where projProposalOnAccQty.ProposalId == projProposalJourTmp.ProposalId
+            join STMTypeboq, STMRoomNoJIS, TotalSalesAmountCur
+            from  projOnAccTransQty
+            group by STMTypeboq, STMRoomNoJIS, TransactionOrigin
+                where projOnAccTransQty.TransId             == projProposalOnAccQty.TransId
+                    && projOnAccTransQty.STMTypeboq         == projOnAccTrans.STMTypeboq
+                    && projOnAccTransQty.STMTypeRoom        == projOnAccTrans.STMTypeRoom
+                    && projOnAccTransQty.TotalSalesAmountCur == projOnAccTrans.TotalSalesAmountCur
+                    && projOnAccTransQty.TransactionOrigin  == projOrigin
+                    && projOnAccTransQty.TotalSalesAmountCur > 0 //ราคาบวกที่ไม่ใช่ค่า OB
+        {
+            qty++;
+        }
+
+        totalAmount += amount;
+
+        i++;
+        projTable = ProjTable::find(projInvoiceOnAcc.ProjId);
+
+        tradeLineItem.clear();
+
+        // ตั้งค่าข้อมูลหลัก
+        tradeLineItem.DataTypeId                        = "L";
+        tradeLineItem.LineId                            = int2str(i);// L01 - [T04, 380]  ลำดับ
+        tradeLineItem.RefRecId                          = refHeader;
+
+        // ข้อมูลผลิตภัณฑ์
+        tradeLineItem.ProductId                         = projTable.ParentId == "" ? projTable.ProjId : ProjTable::find(projInvoiceOnAcc.ProjId).ParentId; //projInvoiceOnAcc.ProjId;// L02 - [T04, 380]  รหัสสินค้า
+        tradeLineItem.ProductName                       = strReplace(name, "\n", " ");// L03 - [T04, 380]  ชื่อสินค้า
+        tradeLineItem.ProductDesc                       = "";//รายละเอียดสินค้า
+
+        tradeLineItem.ProductChargeAmount               = abs(amount / qty);// L10 - [T04, 380]  ราคาต่อหน่วย
+        tradeLineItem.ProductChargeCurrencyCode         = projOnAccTrans.CurrencyId;
+        //tradeLineItem.ProductAllowanceChargeInd         = "false";// ตัวบอกส่วนลดหรือค่าธรรมเนียม true = ค่าธรรมเนียม / false = ส่วนลด
+        //tradeLineItem.ProductAllowanceActualAmount      = retension;//มูลค่าส่วนลดหรือค่าธรรมเนียม
+        tradeLineItem.ProductAllowanceActualCurrencyCode    = projOnAccTrans.CurrencyId;
+        //tradeLineItem.ProductAllowanceReasonCode      = "";//รหัสเหตุผลในการคิดส่วนลดหรือค่าธรรมเนียม
+        //tradeLineItem.ProductAllowanceReason          = "";//เหตุผลในการคิดสวนลดหรือค่าธรรมเนียม
+
+        tradeLineItem.ProductQuantity                   = abs(qty);// L17 - [T04, 380] จำนวนสินค้า
+        tradeLineItem.ProductUnitCode                   = "";//รหัสหน่วยสินค้า
+        tradeLineItem.ProductQuantityPerUnit            = abs(amount);//ขนาดบรรจุต่อหน่วยขาย
+        tradeLineItem.ProductRemark1                    = "";//หมายเหตุท้ายสินค้า 1
+
+        // การตั้งค่าภาษีและการคิดภาษี
+        tradeLineItem.LineTaxTypeCode                   = "VAT";//รหัสประเภทภาษี
+        tradeLineItem.LineTaxCalRate                    = TaxGroupData::find(projOnAccTrans.TaxGroupId, projOnAccTrans.TaxGroupId).showTaxValue();//อัตราภาษี
+        tradeLineItem.LineBasisAmount                   = abs(amount);//มูลค่าสินค้า/บริการ (ไม่รวมภาษีมูลค่าเพิ่ม)
+        tradeLineItem.LineBasisCurrencyCode             = projOnAccTrans.CurrencyId;
+        tradeLineItem.LineTaxCalAmount                  = abs(projInvoiceOnAcc.TaxAmount);//มูลค่าภาษีมูลค่าเพิ่ม
+        tradeLineItem.LineTaxCalCurrencyCode            = projOnAccTrans.CurrencyId;
+        tradeLineItem.LineTaxTotalAmount                = 0;//ภาษีมูลค่าเพิ่ม
+        tradeLineItem.LineTaxTotalCurrencyCode          = "";
+
+        // การคำนวณยอดรวม
+        tradeLineItem.LineNetTotalAmount                = abs(amount);//L33 - [T04, 380]  จำนวนเงินรวมก่อนภาษี
+        tradeLineItem.LineNetTotalCurrencyCode          = projOnAccTrans.CurrencyId;
+        tradeLineItem.LineNetIncludeTaxTotalAmount      = abs(amount);//จำนวนเงินรวม
+        tradeLineItem.LineNetIncludeTaxTotalCurrencyCode = projOnAccTrans.CurrencyId;
+        tradeLineItem.insert();
+    }
+
+    select sum(TaxAmountCur) from taxTransTmp
+        where taxTransTmp.Voucher == projInvoiceJour.LedgerVoucher
+            && taxTransTmp.TransDate == projInvoiceJour.InvoiceDate
+        ;
+
+    while select projProposalOnAcc
+            where projProposalOnAcc.ProposalId == projInvoiceJour.ProposalId
+            join projProposalOnAccDetail
+            where projProposalOnAccDetail.ProposalRefRecId == projProposalOnAcc.RecId
+    {
+        lineAmount = projProposalOnAccDetail.lineAmount();
+        if (lineAmount < 0)
+        {
+            deposit += abs(lineAmount);
+        }
+    }
+
+    documentFooter.clear();
+    documentFooter.DataTypeId                   = "F";
+    documentFooter.RefRecId                     = refHeader;
+    documentFooter.LineTotalCount               = i;//จำนวนรายการสินค้า
+    documentFooter.InvoiceCurrencycode          = projInvoiceJour.CurrencyId;
+    documentFooter.TaxTypeCode1                 = "VAT";//รหัสประเภทภาษี
+    documentFooter.TaxCalRate1                  = strFmt("%1", TaxGroupData::find(projInvoiceJour.TaxGroupId, projInvoiceJour.TaxGroupId).showTaxValue());//อัตราภาษี
+    documentFooter.BasisAmount1                 = strFmt("%1",abs(totalAmount));//มูลค่าสินค้า/บริการ (ไม่รวมภาษีมูลค่าเพิ่ม)
+    documentFooter.BasisCurrencyCode1           = projInvoiceJour.CurrencyId;
+    documentFooter.TaxCalAmount1                = strFmt("%1",abs(taxTransTmp.TaxAmountCur));//มูลค่าภาษีมูลค่าเพิ่ม
+    documentFooter.TaxCalCurrencyCode1          = projInvoiceJour.CurrencyId;
+    documentFooter.PaymentTypeCode              = "";//รหัสประเภทส่วนลดหรือค่าธรรมเนียม
+    documentFooter.PaymentDescription           = "";//รายละเอียดเงื่อนไขการชำระเงิน
+    documentFooter.OriginalTotalCurrencyCode    = projInvoiceJour.CurrencyId;
+    documentFooter.LineTotalAmount              = abs(totalAmount);//F38  - [T04, 380] รวมเป็นเงิน
+    documentFooter.LineTotalCurrencyCode        = projInvoiceJour.CurrencyId;
+    documentFooter.AdjustedInformationCurrencyCode = projInvoiceJour.CurrencyId;
+    documentFooter.AllowanceChargeInd           = "false";//ตัวบอกส่วนลดหรือค่าธรรมเนียม
+    documentFooter.AllowanceActualAmount        = strFmt("%1",abs(retension));//มูลค่าส่วนลดหรือค่าธรรมเนียม
+    documentFooter.AllowanceActualCurrencyCode  = projInvoiceJour.CurrencyId;
+    documentFooter.AllowanceTotalAmount         = abs(retension);//ส่วนลดทั้งหมด
+    documentFooter.AllowanceTotalCurrencyCode   = projInvoiceJour.CurrencyId;
+    documentFooter.TaxBasisTotalAmount          = abs(projInvoiceJour.OnAccountAmount);//F46 -[T04] ยอดหลังหักมัดจำ
+    documentFooter.TaxBasisTotalCurrencyCode    = projInvoiceJour.CurrencyId;
+    documentFooter.TaxTotalAmount               = abs(taxTransTmp.TaxAmountCur);//F48 -[T04] ภาษีมูลค่าเพิ่ม
+    documentFooter.TaxTotalCurrencyCode         = projInvoiceJour.CurrencyId;
+    documentFooter.GrandTotalAmount             = abs(totalAmount) + abs(taxTransTmp.TaxAmountCur) - abs(retension);//F50 - [T04] รวมจำนวนเงิน
+    documentFooter.GrandTotalCurrencyCode       = projInvoiceJour.CurrencyId;
+    documentFooter.TermPayment                  = projInvoiceJour.Payment ? strFmt("%1 วัน", PaymTerm::find(projInvoiceJour.Payment).NumOfDays) : "";// F52 - [T04, 380]  เครดิต
+    documentFooter.PaymentDueDtm                = str2datetime(strFmt("%1 00:00:00",projInvoiceJour.InvoiceDate - PaymTerm::find(projInvoiceJour.Payment).NumOfDays), 123);//F35  - [T04, 380] วันครบกำหนดชำระ
+    documentFooter.DocumentRemark1              = strFmt("%1",abs(projInvoiceJour.SumLineDisc));//F70 - [T04] - ส่วนลด
+    documentFooter.DocumentRemark2              = strFmt("%1",totalAmount);//F71 - [T04] - ยอดหลังหักส่วนลด
+    documentFooter.DocumentRemark3              = strFmt("%1",deposit);//F72 - [T04] - หักมัดจำ
+    documentFooter.insert();
+
+    fileTrailer.clear();
+    fileTrailer.DataTypeId              = "T";
+    fileTrailer.RefRecId                = refHeader;
+    fileTrailer.TotalDocumentCount      = 1;
+    fileTrailer.insert();
+
+}
