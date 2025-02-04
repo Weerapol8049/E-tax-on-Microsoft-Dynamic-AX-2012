@@ -1,8 +1,0 @@
-public boolean enableEtax()
-{
-    StmEtaxParameter        etaxParameter;
-
-    select firstOnly etaxParameter;
-
-    return etaxParameter.EtaxSystem == NoYes::Yes ? true : false;
-}
