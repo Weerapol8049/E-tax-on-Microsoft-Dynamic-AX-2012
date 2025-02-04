@@ -1,0 +1,7 @@
+public boolean getFromDialog()
+{
+    documentType = field.value();
+    purpose = fieldPurpose.value();
+
+    return true;
+}
