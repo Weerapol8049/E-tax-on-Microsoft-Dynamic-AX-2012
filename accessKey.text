@@ -1,7 +1,0 @@
-str accessKey()
-{
-    //LIVE
-    return "L0v3hin4";
-    //UAT
-    //return "star@pass01";
-}
