@@ -1,0 +1,6 @@
+public boolean parmHideType(boolean _hideType = hideType)
+{
+    hideType = _hideType;
+
+    return hideType;
+}
