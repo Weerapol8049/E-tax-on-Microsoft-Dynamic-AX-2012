@@ -1,0 +1,97 @@
+public void send()
+{
+    Args                            args = new Args();
+    MenuFunction                    menuFunction;
+    FormRun                         formRun;
+
+    DialogButton                    dialogBtn;
+    System.Net.WebRequest           webreq;
+    System.IO.Stream                streamstr, responsestr;
+    System.IO.StreamWriter          streamWriter;
+    System.Net.WebResponse          webresponse;
+    System.IO.StreamReader          reader;
+    System.Net.WebHeaderCollection  headers;
+    System.Exception                ex;
+    str                             json;
+
+    try
+    {
+        if (!this.enableEtax()) return;
+
+        this.manageDataTable();
+
+        if (!this.validate() || documentType == "") return;
+
+        select firstOnly documentHeader;
+
+        args.record(documentHeader);
+
+        menuFunction = new MenuFunction(menuitemDisplayStr(StmEtaxDialog), MenuItemType::Display);
+
+        formRun = menuFunction.create(args);
+        formRun.run();
+        formRun.wait(true);
+
+        //dialogBtn = Box::yesNo("Are you sure you want to send E-tax?", DialogButton::Yes, "Confirmation");
+        //if (dialogBtn == DialogButton::Yes)
+
+        if (formRun.closedOk())
+        {
+            setPrefix("E-tex message");
+
+            if (!this.validatePosted(accountNum)) return;
+
+            json = this.createJson();
+            info(json);
+            //this.clearData();
+
+            System.Net.ServicePointManager::set_SecurityProtocol(System.Net.SecurityProtocolType::Tls12);
+
+            new InteropPermission(InteropKind::ClrInterop).assert();
+
+            webreq = System.Net.WebRequest::Create(this.URL());
+
+            headers = new System.Net.WebHeaderCollection();
+            headers.Add("Authorization:" + this.authorizationCode());
+
+            webreq.set_Headers(headers);
+            webreq.set_Method("POST");
+            webreq.set_ContentType("application/json");
+
+            streamstr = webreq.GetRequestStream();
+            streamWriter = new System.IO.StreamWriter(streamstr);
+            streamWriter.Write(json);
+            streamWriter.Flush();
+            streamWriter.Close();
+            streamWriter.Dispose();
+
+            try
+            {
+                webresponse = webreq.GetResponse();
+                responsestr = webresponse.GetResponseStream();
+                reader = new System.IO.StreamReader(responsestr);
+                //info(reader.ReadToEnd());
+                this.createTransaction(reader.ReadToEnd());
+            }
+            catch(Exception::CLRError)
+            {
+                ex = ClrInterop::getLastException();
+                if (ex != null)
+                {
+                    ex = ex.get_InnerException();
+                    if (ex != null)
+                    {
+                        error(ex.ToString());
+                    }
+                }
+            }
+        }
+   }
+   catch (Exception::CLRError)
+   {
+        ex = CLRInterop::getLastException().GetBaseException();
+        error(ex.get_Message());
+   }
+
+   this.clearData();
+}
