@@ -1,6 +1,0 @@
-public Common parmData(Common _common = common)
-{
-    common = _common;
-
-    return common;
-}
