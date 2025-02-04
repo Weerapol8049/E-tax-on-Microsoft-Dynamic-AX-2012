@@ -1,0 +1,28 @@
+class StmEtax
+{
+    StmEtaxFileControl      fileControl;
+    StmEtaxDocumentHeader   documentHeader;
+    StmEtaxInformation      information;
+    StmEtaxTradeLineItem    tradeLineItem;
+    StmEtaxDocumentFooter   documentFooter;
+    StmEtaxFileTrailer      fileTrailer;
+
+    RefRecId                refHeader;
+    InvoiceId               invoiceId;
+
+    Common                  common;
+    CustInvoiceJour         custInvoiceJour;
+    ProjInvoiceJour         projInvoiceJour;
+    CustInvoiceTable        custInvoiceTable;
+    ProjProposalJour        projProposalJour;
+    LedgerJournalTrans      ledgerJournalTrans;
+     TaxTrans                taxTrans;
+    CustTable               custTablePaym;
+    str   5                 documentType;
+    str   15                template;
+    str   5                 detailSummary;
+    str   6                 purposeCode;
+    str   256               purpose;
+    boolean                 isSend;
+    AccountNum              accountNum;
+}
