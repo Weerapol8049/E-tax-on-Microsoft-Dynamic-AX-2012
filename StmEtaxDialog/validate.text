@@ -1,0 +1,23 @@
+public boolean validate(Object calledFrom = null)
+{
+    boolean ret;
+
+    ret = super(calledFrom);
+
+    if (documentType == "")
+    {
+        ret = checkFailed("กรุณาเลือกประเภทเอกสาร (Document type).");
+    }
+
+    if (documentType == "80" && fieldPurposeCode.value() == "")
+    {
+        ret = checkFailed("กรุณาเลือก Purpose code.");
+    }
+
+    if (subStr(fieldPurposeCode.value(), 5, 2) == "99" && purpose == "")
+    {
+        ret = checkFailed("กรุณาระบุสาเหตุ (Purpose).");
+    }
+
+    return ret;
+}
