@@ -1,0 +1,33 @@
+str address(LogisticsPostalAddress postalAddress)
+{
+    int                         prefixCity;
+    int                         prefixCityBKK;
+    int                         prefixStateBKK;
+    str 150                     street,distrinct,city,state,address;
+
+    if (postalAddress.Street != "")
+        street                                = strReplace(strReplace(postalAddress.Street, "\n", ""), "\r", "");
+
+    if (postalAddress.City != "")
+    {
+        prefixStateBKK              = strScan(postalAddress.State,"กรุงเทพ",0,strLen(postalAddress.State));
+        prefixCityBKK               = strScan(postalAddress.City,"เขต",0,strLen(postalAddress.City));
+        prefixCity                  = strScan(postalAddress.City,"อำเภอ",0,strLen(postalAddress.City));
+        city                        = postalAddress.City;
+        if (prefixStateBKK > 0)
+        {
+            if (prefixCityBKK == 0)
+                city = "เขต" + postalAddress.City;
+        }
+        else
+        {
+            if (prefixCity == 0)
+                city = "อำเภอ" + postalAddress.City;
+        }
+    }
+
+    if (postalAddress.State != "")
+        state  = strFmt("จังหวัด%1", postalAddress.State);
+
+    return strFmt("%1 %2 %3 %4", street, distrinct, city, state);
+}
