@@ -1,0 +1,15 @@
+class StmEtaxDialog extends RunBase
+{
+    DialogField     field;
+    DialogField     fieldDetailSummary;
+    DialogField     fieldPurpose;
+    DialogField     fieldPurposeCode;
+    DialogField     fieldDesc;
+
+    Name            documentType;
+    str             type;
+    boolean         hideType;
+    boolean         hideDocuType;
+    str 6               purposeCode;
+    str 120             purpose;
+}
