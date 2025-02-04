@@ -1,0 +1,7 @@
+[DataMemberAttribute("PurposeCode")]
+public Name parmPurposeCode()
+{
+    purposeCode = fieldPurposeCode.value();
+
+    return purposeCode;
+}
