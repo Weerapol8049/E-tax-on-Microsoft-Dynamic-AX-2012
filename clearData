@@ -1,0 +1,10 @@
+private void clearData()
+{
+    delete_from   fileControl;
+    delete_from   documentHeader;
+    delete_from   information;
+    delete_from   tradeLineItem;
+    delete_from   documentFooter;
+    delete_from   fileTrailer;
+
+}
