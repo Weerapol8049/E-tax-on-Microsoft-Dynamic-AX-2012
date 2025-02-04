@@ -1,0 +1,17 @@
+private void lookupDocumentType(FormStringControl   _control)
+{
+    Query                   query = new Query();
+    QueryBuildDataSource    qbds;
+    QueryBuildRange         qbr;
+    SysTableLookup          sysTableLookup = SysTableLookup::newParameters(tableNum(StmEtaxReferenceLetter), _control);
+
+    qbds = query.addDataSource(tableNum(StmEtaxReferenceLetter));
+
+    qbr = qbds.addRange(fieldNum(StmEtaxReferenceLetter, LetterId));
+    qbr.value('80,T04');
+
+    sysTableLookup.parmQuery(query);
+    sysTableLookup.addLookupField(fieldNum(StmEtaxReferenceLetter, LetterId));
+    sysTableLookup.addLookupField(fieldNum(StmEtaxReferenceLetter, Description));
+    sysTableLookup.performFormLookup();
+}
