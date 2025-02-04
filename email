@@ -1,4 +1,0 @@
-str email()
-{
-    return "e-tax@starmark.co.th";
-}
