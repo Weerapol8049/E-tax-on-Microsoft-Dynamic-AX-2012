@@ -1,0 +1,22 @@
+private boolean modifiedPurposeCode(FormStringControl   _control)
+{
+    StmEtaxPurposeCode      etaxPurposeCode;
+
+    select etaxPurposeCode where etaxPurposeCode.PurposeId == fieldPurposeCode.value();
+
+    if (field.value() == "80" || documentType != "")
+    {
+        fieldDesc.visible(true);
+        fieldDesc.value(etaxPurposeCode.Description);
+
+        if (subStr(fieldPurposeCode.value(), 5, 2) == "99")
+        {
+            fieldPurpose.visible(true);
+        }
+        else
+            fieldPurpose.visible(false);
+    }
+
+
+    return true;
+}
