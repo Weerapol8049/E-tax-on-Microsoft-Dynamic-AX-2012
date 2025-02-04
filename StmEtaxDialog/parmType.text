@@ -1,0 +1,5 @@
+[DataMemberAttribute("Type")]
+public str parmType()
+{
+    return fieldDetailSummary.value();
+}
