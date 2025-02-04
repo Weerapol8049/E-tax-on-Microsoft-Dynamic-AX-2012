@@ -1,0 +1,21 @@
+private void lookupPurpose(FormStringControl   _control)
+{
+    Query                   query = new Query();
+    QueryBuildDataSource    qbds;
+    QueryBuildRange         qbr;
+    SysTableLookup          sysTableLookup = SysTableLookup::newParameters(tableNum(StmEtaxPurposeCode), _control);
+
+    qbds = query.addDataSource(tableNum(StmEtaxPurposeCode));
+
+    qbr = qbds.addRange(fieldNum(StmEtaxPurposeCode, PurposeId));
+
+    if (documentType == "81" || documentType == "381")
+        qbr.value('CDN*');
+    else
+        qbr.value('DBN*');
+
+    sysTableLookup.parmQuery(query);
+    sysTableLookup.addLookupField(fieldNum(StmEtaxPurposeCode, PurposeId));
+    sysTableLookup.addLookupField(fieldNum(StmEtaxPurposeCode, Description));
+    sysTableLookup.performFormLookup();
+}
