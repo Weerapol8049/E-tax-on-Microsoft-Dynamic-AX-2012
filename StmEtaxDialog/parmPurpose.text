@@ -1,0 +1,7 @@
+[DataMemberAttribute("Purpose")]
+public Name parmPurpose()
+{
+    purpose = fieldPurpose.value() == "" ? fieldDesc.value() : fieldPurpose.value();
+
+    return purpose;
+}
